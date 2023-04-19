@@ -1,0 +1,218 @@
+% Business Insights from the n2c2 Dataset
+% Jacob Sanchez <jsanchez-perez@uclan.ac.uk>
+% University of Central Lancashite
+
+\documentclass[a4paper,12pt]{article}
+
+\usepackage{hyperref}
+\usepackage{minted}
+
+% Referencing and more
+\usepackage[british]{babel}
+\usepackage{csquotes}
+\usepackage[style=apa,backend=biber]{biblatex}
+
+\usepackage{booktabs}
+
+\author{Jacob Sánchez Pérez}
+\title{Business Insights for Healthcare: CAD Risk Factors}
+
+% .bib Files
+\addbibresource{references.bib}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+Coronary heart disease (CAD) is a condition in which the vessels supplying
+the heart fail to adequately perform their function, often due to build up
+of cholesterol deposits in the arteries \parencite{NHLBI2022}.
+CAD is one of the leading causes of death in developed countries, with
+a prevalence of 5 to 8 \% worldwide and the highest economic burden of
+any disease \parencite{Bauersachs2019, Liu2002}.
+With the advent of new technologies and disciplines, such as data science
+and machine learning, there exists an opportunity to leverage these
+technologies in order to better understand CAD and its risk factors.
+In this paper, a dataset containing medical data belonging to 296 diabetic
+patients with a total of 1304 medical records was explored, analysed, and
+processed through a machine learning algorithm in order to answer the
+following questions:
+
+\begin{enumerate}
+ \item Can we predict the presence of CAD based on the available risk factors?
+ \item Which risk factors are most strongly correlated with CAD?
+\end{enumerate}
+
+The answer to these questions can provide further insights that make data
+science and machine learning viable investments to healthcare providers in
+order to more adequately treat and prevent CAD in the future.
+
+
+\section{Dataset and Objectives}
+
+The n2c2 datasets, formerly known as the i2b2 datasets and currently hosted by
+the Harvard Institute of Biomedical Informatics \parencite{Kumar2015} contain
+a collection of different datasets focusing on different topics, such as
+smoking, obesity, and cardiac disease.
+The 2014 n2c2 dataset contains a total of 1304 medical records which belong to
+296 diabetic patients.
+Each record is kept in XML format and contains free-text records, as well as
+annotations in the case of the training data.
+The objective of this paper is to import the dataset, verify its correctness,
+and then analyse the different comorbidities and risk factors that accompany
+coronary artery disease.
+For this purpose, only the training dataset with annotations will be used,
+since it contains pre-annotated records, as the current task will not focus on
+document annotation and entity name recognition.
+By analysing these records, the hope is to build up a model of which risk
+factors are the most prevalent alongside CAD, and with this information
+healthcare providers can analyse their patient records and determine which
+of them are in risk of CAD in the near future.
+Since prevention is always best, early treatment of CAD could lessen the
+economic and humanitarian burden of the disease in the long term, while
+still allowing healthcare providers to provide continuous check-ups and
+other preventive care that would bring profits without too many complications.
+
+\section{Data Analysis}
+
+\subsection{Introduction}
+
+This section will deal with the processes that data analysis involves, such as
+data importing, data cleansing, data preparation, analyzing, and finally,
+post-processing and visualisation.
+Python 3.10.10 was used for the tasks that require running code, and any other
+libraries will be specified when appropriate.
+
+\subsection{Obtaining the Dataset}
+The n2c2 dataset requires previous authorisation in order to access and download
+the dataset.
+This involves signing the data use agreement, and registering as a user.
+Once this process is complete and the request is authorised, the dataset
+collection may be accessed in its entirety.
+The 2014 n2c2 challenge was made up of two tasks.
+The first one is the de-identification of medical records, and the second one
+the annotation of said records (parsing free-text records).
+However for this paper neither task will be attempted.
+Instead, the annotated training records for the second task will be looked at,
+in order to beter understand the relationship between CAD and its risk factors.
+The \enquote{Training Data: RiskFactors Gold Set 1} dataset will be used for
+initial analysis and training, while the \enquote{Training Data: RiskFactors
+Gold Set 2} dataset will be used for validation/testing.
+
+\subsection{Structure of a Record}
+A sample record structure can be seen here.
+
+\begin{minted}[breaklines]{xml}
+<?xml version='1.0' encoding='UTF-8'?>
+<root>
+  <TEXT><![CDATA[
+
+
+Record date: 2078-06-15
+
+                     DISTRICT FOUR EMERGENCY DEPT VISIT
+ 
+ESPOSITO,PERLA   146-55-23-5                     VISIT DATE: 06/15/78
+PRESENTING COMPLAINT:  The patient is a 77 year old female with 
+history of coronary artery disease who presents to District Four State
+Hospital emergency room department with chief complaint of numbness 
+...
+FINAL DIAGNOSIS:  Rule out cerebrovascular accident. 
+DISPOSITION (including condition upon discharge):  Admit the 
+patient to medicine service for further workup and evaluation. 
+___________________________________                    DQ294/8654 
+W. TAMAR WHITEHEAD, M.D.  TW31                            D:06/15/78 
+                                                       T:06/16/78 
+Dictated by:  W. TAMAR WHITEHEAD, M.D.  TW31 
+ ******** Not reviewed by Attending Physician ********
+
+]]></TEXT>
+  <TAGS>
+    <MEDICATION id="DOC0" time="during DCT" type1="calcium channel blocker" type2=""/>
+    <MEDICATION id="DOC3" time="during DCT" type1="aspirin" type2=""/>
+    <MEDICATION id="DOC5" time="after DCT" type1="aspirin" type2=""/>
+    <MEDICATION id="DOC7" time="before DCT" type1="calcium channel blocker" type2=""/>
+    <MEDICATION id="DOC8" time="before DCT" type1="beta blocker" type2=""/>
+    <MEDICATION id="DOC9" time="after DCT" type1="calcium channel blocker" type2=""/>
+    <MEDICATION id="DOC11" time="before DCT" type1="aspirin" type2=""/>
+    <MEDICATION id="DOC12" time="after DCT" type1="beta blocker" type2=""/>
+    <MEDICATION id="DOC14" time="during DCT" type1="beta blocker" type2=""/>
+    <HYPERTENSION id="DOC6" time="during DCT" indicator="high bp"/>
+    <CAD id="DOC1" time="before DCT" indicator="mention"/>
+    <CAD id="DOC4" time="before DCT" indicator="event"/>
+    <CAD id="DOC10" time="during DCT" indicator="mention"/>
+    <CAD id="DOC13" time="after DCT" indicator="mention"/>
+    <FAMILY_HIST id="DOC15" indicator="not present"/>
+    <SMOKER id="DOC2" status="unknown"/>
+  </TAGS>
+</root>
+\end{minted}
+
+\subsection{Importing the Dataset}
+Once the dataset 1 has been downloaded and extracted, the next step is to load
+the data into a Python environment.
+Since the data is in XML format, it is first necessary to parse the XML tree,
+which can be achieved with a XML library.
+For instance, as follows.
+
+\begin{minted}{python}
+import xml.etree.ElementTree as ET
+
+tree = ET.parse("file.xml")
+root = tree.getroot()
+\end{minted}
+
+A python module was developed to help parse each record (available in Appendix
+\ref{app:record-code}).
+A first attempt to parse the set of records revealed the first problem.
+The program assumes that the record will start with the line containing the
+date of consult.
+However, at least one record does not follow this pattern for unknown reasons.
+Instead of modifying this record, the program itself was adapted to handle the
+edge case.
+
+\begin{minted}{python}
+try:
+    date_text = self._root[0].text.strip()[13:23]
+    self.date = datetime.fromisoformat(date_text).date()
+except ValueError as e:
+    self.date = None
+\end{minted}
+
+After this change, the entire dataset could be loaded without issues.
+
+\subsection{Data Cleansing}
+
+A preliminary check was done to see if any of the records were duplicates,
+by issuing the following command in the terminal, which calculates the
+hash of each record, then compares them to find duplicates.
+Fortunately, no duplicates were found.
+
+\begin{minted}[breaklines]{bash}
+find /path/to/folder -type f -exec shasum -a 1 {} + | cut -c 1-40 | sort | uniq -d
+\end{minted}
+
+\subsection{Data Preparation}
+
+Since there exist many records for each patient, it was decided to group the
+records according to the patient, instead of treating each record as its own
+entity.
+This meant changing the data structure to a dictionary, which contains each
+patient id as keys, and their respective records as values.
+
+\begin{minted}{python}
+if file_path.is_file():
+    pt_id = str(file_path).split('-')[0]
+
+    if pt_id not in self.patients:
+        self.patients[pt_id] = []
+
+    self.patients[pt_id].append(Record(file_path))
+\end{minted}
+
+\section{Conclusions}
+
+\pagebreak
+\printbibliography
+\end{document}
