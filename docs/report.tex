@@ -6,6 +6,8 @@
 
 \usepackage{hyperref}
 \usepackage{minted}
+\usepackage{graphicx}
+\usepackage{tabularx}
 
 % Referencing and more
 \usepackage[british]{babel}
@@ -19,6 +21,8 @@
 
 % .bib Files
 \addbibresource{references.bib}
+
+\graphicspath{{figures}}
 
 \begin{document}
 \maketitle
@@ -199,7 +203,7 @@ Since there exist many records for each patient, it was decided to group the
 records according to the patient, instead of treating each record as its own
 entity.
 This meant changing the data structure to a dictionary, which contains each
-patient id as keys, and their respective records as values.
+patient's id as keys, and their respective records as values.
 
 \begin{minted}{python}
 if file_path.is_file():
@@ -211,7 +215,142 @@ if file_path.is_file():
     self.patients[pt_id].append(Record(file_path))
 \end{minted}
 
-\section{Conclusions}
+\subsection{First Experiment: \textit{n\-gram} Model}
+
+For this experiment, the free-text portions of each record for any given
+patient will be tokenised together using an \textit{n\-gram} model, and
+the results will be visualised according to their correlation to CAD
+annotations.
+A dataset Python class was written to help analyse the records belonging
+to every patient, and is available in the Appendices for reference.
+The \mintinline{python}{dataset.labels(condition: str, indicator: str)}
+method simply constructs binary labels for each patient that indicate
+whether the condition passed has been annotated in their records with
+the indicator passed (see the record format for reference).
+After the texts and their labels are fetched, the program constructs
+a TfidfVectorizer, which is a tokenizer that rescales features
+(n\-grams) based on their expected importance depending on the ratio
+of times they appear on the current document compared to all documents.
+A custom tokenizer based on the spaCy package is passed to the vectorizer,
+which also performs the task of lemmatisation, removes punctuation and
+whitespace.
+Finally, the \mintinline{python}{min_df=2} parameter specifies that
+\textit{n\-grams} must appear in at least 2 documents to be considered
+features.
+Afterwards, the vocabulary is built and the data is split into training
+and testing sets using the \mintinline{python}{train_test_split} utility
+function.
+
+\begin{minted}[breaklines]{python}
+    # Collect a list of compiled texts from each patient
+    texts = self.dataset.texts
+    # And the label of each patient
+    labels = self.dataset.labels(condition, event)
+
+    vect = TfidfVectorizer(
+            token_pattern=None,
+            tokenizer=self.spacy_tokenizer,
+            ngram_range=(1, 4),
+            min_df=2
+    )
+
+    # Transform the texts into a TF-IDF matrix
+    X = vect.fit_transform(texts)
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, labels, test_size=0.2, random_state=42)
+\end{minted}
+
+Logistic Regression was chosen as the initial machine learning model.
+After fitting the model, the features with the highest correlations were
+extracted and plotted.
+
+\begin{minted}[breaklines]{python}
+    # Train the linear regression model
+    model = LogisticRegression(C=5, max_iter=1000)
+    model.fit(X_train, y_train)
+    
+    # Obtain the feature names and coefficients
+    feature_names = np.array(vect.get_feature_names_out())
+    coefficients = model.coef_[0]
+
+    # Call the reusable function to visualize the top features
+    plot_top_features(feature_names, coefficients, 50)
+\end{minted}
+
+The first attempt to visualise was a horizontal bar graph where the x-axis
+was the coefficient of correlation for every feature.
+However, in order to also include features that negatively correlated with
+CAD risk, this was later changed to a vertical bar graph where the y-axis
+represents the coefficient.
+\textit{matplotlib} was used to draw the graphs, which can be seen in the
+Appendices.
+After obtaining the results using only the first set of training data,
+a second attempt was made using both sets of training data, with 791
+individual reports.
+These results were also plotted and visualised.
+
+\subsection{Second Experiment: Support Machine Vector}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+    \toprule
+    \textbf{n\-gram} \\
+    stent \\
+    cabq \\
+    cad \\
+    coronary \\
+    aortic \\
+    ...\\
+    dialysis \\
+    negative \\
+    right \\
+    mg tablet \\
+    ua \\
+    neg \\
+    \midrule
+    \bottomrule
+\end{tabular}
+\caption{Model Features From Highest to Lowest Correlation with CAD Events Using Set 1}
+\label{tab:top_features_event_50}
+\end{table}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{{exp_1_mention_50}}
+\caption{Top features associated with CAD mentions}
+\label{fig:exp-1-mention-50}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{{exp_1_event_50}}
+\caption{Top features associated with CAD events}
+\label{fig:exp-1-event-50}
+\end{figure}
+
+
+\section{Insights}
+
+Since the documents have been manually annotated based on the free-text, most
+of the most highly-correlated features are not particularly useful to identify
+other risk factors.
+For instance, it is natural that a record containing the term
+\enquote{chest pain} will also likely contain an annotation for a CAD symptom.
+However, not every feature is so directly correlated.
+For instance, some of the \textit{n-grams} that are negatively correlated with
+having a CAD event are: \textit{ua (urinalysis), mg tablet, dialysis, dementia,
+5/5 (full motor strength), female, daughter, woman.}
+By contrast, some of the positively correlated \textit{n-grams} are: \textit{
+male, wife, radiation}.
+Based on this insights alone, it is easy to show the higher risk of CAD for
+men, even with the positively correlated term \textit{wife}, which is more
+frequently used in male records.
+Although this is hardly a new insight, or otherwise remarkable, it shows that
+the model correctly detects terms that directly correlate to CAD disease,
+both positively and negatively.
+
 
 \pagebreak
 \printbibliography
